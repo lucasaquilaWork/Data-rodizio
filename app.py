@@ -117,8 +117,43 @@ if arquivo and menu != "Rodízio (visualização)":
         append_df(DISPONIBILIDADE_TAB, df)
 
     elif menu == "Upload carregamento":
-        df = processar_carregamento(df, base_motoristas)
-        append_df(CARREGAMENTO_TAB, df)
+    df_novo = processar_carregamento(df, base_motoristas)
+
+    # 🔥 LER O QUE JÁ EXISTE
+    df_existente = ensure_df(read_tab(CARREGAMENTO_TAB))
+
+    if not df_existente.empty:
+        df_existente.columns = (
+            df_existente.columns
+            .astype(str)
+            .str.strip()
+            .str.lower()
+        )
+
+        # GARANTE STRING LIMPA
+        df_existente["task_id"] = (
+            df_existente["task_id"]
+            .astype(str)
+            .str.replace(r"\.0$", "", regex=True)
+        )
+
+        df_novo["task_id"] = (
+            df_novo["task_id"]
+            .astype(str)
+            .str.replace(r"\.0$", "", regex=True)
+        )
+
+        # 🚫 REMOVE ATs JÁ REGISTRADAS
+        df_novo = df_novo[
+            ~df_novo["task_id"].isin(df_existente["task_id"])
+        ]
+
+    if df_novo.empty:
+        st.warning("⚠️ Nenhuma AT nova para registrar (todas já existiam)")
+    else:
+        append_df(CARREGAMENTO_TAB, df_novo)
+        st.success(f"✅ {len(df_novo)} carregamentos novos registrados")
+
 
     elif menu == "Upload devolucoes":
         df = processar_devolucoes(df, base_motoristas)
