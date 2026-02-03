@@ -12,42 +12,31 @@ from processing.recusas import processar_recusas
 from metrics.rodizio import consolidar_rodizio
 from config.settings import *
 
-# ===============================
-# CONFIG
-# ===============================
+
+# =====================================================
+# CONFIG STREAMLIT
+# =====================================================
 st.set_page_config(layout="wide")
 st.title("📊 Rodízio Semanal")
 
-# ===============================
-# BASES FIXAS
-# ===============================
-st.write("Spreadsheet:", st.secrets["spreadsheet_id"])
 
-base_motoristas = read_tab(BASE_MOTORISTAS_TAB)
-base_regiao = read_tab(BASE_REGIAO_TAB)
+# =====================================================
+# FUNÇÕES DE SEGURANÇA
+# =====================================================
+def ensure_df(df):
+    """Garante DataFrame SEMPRE"""
+    if df is None:
+        return pd.DataFrame()
+    if not isinstance(df, pd.DataFrame):
+        return pd.DataFrame(df)
+    return df
 
-# ===============================
-# MENU
-# ===============================
-menu = st.sidebar.selectbox(
-    "Menu",
-    [
-        "Upload disponibilidade",
-        "Upload carregamento",
-        "Upload devolucoes",
-        "Upload cancelamento",
-        "Upload recusas",
-        "Rodízio (visualização)"
-    ]
-)
 
-# ===============================
-# FUNÇÕES AUX
-# ===============================
 def ler_arquivo(file):
     if file.name.endswith(".csv"):
         return pd.read_csv(file)
     return pd.read_excel(file)
+
 
 def botao_modelo(df_modelo, nome_arquivo, label):
     buffer = BytesIO()
@@ -61,14 +50,42 @@ def botao_modelo(df_modelo, nome_arquivo, label):
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
 
-# ===============================
+
+# =====================================================
+# BASES FIXAS (BLINDADAS)
+# =====================================================
+try:
+    base_motoristas = ensure_df(read_tab(BASE_MOTORISTAS_TAB))
+    base_regiao = ensure_df(read_tab(BASE_REGIAO_TAB))
+except Exception as e:
+    st.error("Erro ao conectar na planilha Google")
+    st.stop()
+
+
+# =====================================================
+# MENU
+# =====================================================
+menu = st.sidebar.selectbox(
+    "Menu",
+    [
+        "Upload disponibilidade",
+        "Upload carregamento",
+        "Upload devolucoes",
+        "Upload cancelamento",
+        "Upload recusas",
+        "Rodízio (visualização)"
+    ]
+)
+
+
+# =====================================================
 # UPLOAD
-# ===============================
+# =====================================================
 arquivo = None
 
 if menu == "Upload devolucoes":
 
-    st.subheader("📥 Modelo para upload de Devoluções")
+    st.subheader("📥 Modelo – Devoluções")
 
     modelo = pd.DataFrame({
         "Driver ID": [""],
@@ -77,14 +94,13 @@ if menu == "Upload devolucoes":
         "data": [datetime.datetime.now().strftime("%d/%m/%Y")]
     })
 
-    botao_modelo(modelo, "modelo_devolucoes.xlsx", "⬇️ Baixar modelo de devoluções")
+    botao_modelo(modelo, "modelo_devolucoes.xlsx", "⬇️ Baixar modelo")
     st.divider()
-
     arquivo = st.file_uploader("Upload do arquivo", type=["csv", "xlsx"])
 
 elif menu == "Upload cancelamento":
 
-    st.subheader("📥 Modelo para upload de Cancelamento")
+    st.subheader("📥 Modelo – Cancelamento")
 
     modelo = pd.DataFrame({
         "Driver ID": [""],
@@ -93,17 +109,17 @@ elif menu == "Upload cancelamento":
         "Turno": ["AM"]
     })
 
-    botao_modelo(modelo, "modelo_cancelamento.xlsx", "⬇️ Baixar modelo de cancelamento")
+    botao_modelo(modelo, "modelo_cancelamento.xlsx", "⬇️ Baixar modelo")
     st.divider()
-
     arquivo = st.file_uploader("Upload do arquivo", type=["csv", "xlsx"])
 
 else:
     arquivo = st.file_uploader("Upload de arquivo", type=["csv", "xlsx"])
 
-# ===============================
-# PROCESSAMENTO
-# ===============================
+
+# =====================================================
+# PROCESSAMENTO UPLOAD
+# =====================================================
 if arquivo and menu != "Rodízio (visualização)":
 
     df = ler_arquivo(arquivo)
@@ -130,30 +146,30 @@ if arquivo and menu != "Rodízio (visualização)":
 
     st.success("✅ Arquivo processado e salvo com sucesso")
 
-# ===============================
-# RODÍZIO / VISUALIZAÇÃO
-# ===============================
+
+# =====================================================
+# RODÍZIO
+# =====================================================
 if menu == "Rodízio (visualização)":
 
-    disp = read_tab(DISPONIBILIDADE_TAB)
-    carg = read_tab(CARREGAMENTO_TAB)
-    dev = read_tab(DEVOLUCOES_TAB)
-    canc = read_tab(CANCELAMENTO_TAB)
-    rec = read_tab(RECUSAS_TAB)
+    disp = ensure_df(read_tab(DISPONIBILIDADE_TAB))
+    carg = ensure_df(read_tab(CARREGAMENTO_TAB))
+    dev  = ensure_df(read_tab(DEVOLUCOES_TAB))
+    canc = ensure_df(read_tab(CANCELAMENTO_TAB))
+    rec  = ensure_df(read_tab(RECUSAS_TAB))
 
-    if disp.empty:
+    if disp.empty or "semana" not in disp.columns:
         st.warning("Nenhuma disponibilidade cadastrada")
         st.stop()
 
     semanas = sorted(disp["semana"].dropna().unique())
-
     semana_sel = st.selectbox("Selecione a semana", semanas)
 
-    # 🔥 FILTRO CORRETO POR SEMANA
+    # FILTRO SEMANAL
     disp_w = disp[disp["semana"] == semana_sel]
-    carg_w = carg[carg["semana"] == semana_sel] if not carg.empty else carg
-    dev_w  = dev[dev["semana"] == semana_sel] if not dev.empty else dev
-    rec_w  = rec[rec["semana"] == semana_sel] if not rec.empty else rec
+    carg_w = carg[carg["semana"] == semana_sel] if "semana" in carg.columns else carg
+    dev_w  = dev[dev["semana"] == semana_sel] if "semana" in dev.columns else dev
+    rec_w  = rec[rec["semana"] == semana_sel] if "semana" in rec.columns else rec
     canc_w = canc.copy()
 
     rodizio = consolidar_rodizio(
@@ -166,29 +182,30 @@ if menu == "Rodízio (visualização)":
         debug=False
     )
 
-    # ===============================
-    # INCLUI MOTORISTAS SEM DISPONIBILIDADE
-    # ===============================
-    base_ids = base_motoristas["driver_id"].astype(str)
-    rodizio_ids = rodizio["driver_id"].astype(str)
+    # =================================================
+    # MOTORISTAS SEM DISPONIBILIDADE
+    # =================================================
+    if not base_motoristas.empty:
+        base_ids = base_motoristas["driver_id"].astype(str)
+        rodizio_ids = rodizio["driver_id"].astype(str)
 
-    faltantes = base_motoristas[
-        ~base_ids.isin(rodizio_ids)
-    ][["driver_id", "driver_name", "turno"]].copy()
+        faltantes = base_motoristas[
+            ~base_ids.isin(rodizio_ids)
+        ][["driver_id", "driver_name", "turno"]].copy()
 
-    if not faltantes.empty:
-        faltantes["disp_total"] = 0
-        faltantes["carg_total"] = 0
-        faltantes["turno_referencia"] = faltantes["turno"]
-        faltantes["origem_turno"] = "BASE_MOTORISTAS"
-        faltantes["sem_disponibilidade"] = True
+        if not faltantes.empty:
+            faltantes["disp_total"] = 0
+            faltantes["carg_total"] = 0
+            faltantes["turno_referencia"] = faltantes["turno"]
+            faltantes["origem_turno"] = "BASE_MOTORISTAS"
+            faltantes["sem_disponibilidade"] = True
 
-        rodizio["sem_disponibilidade"] = False
-        rodizio = pd.concat([rodizio, faltantes], ignore_index=True)
+            rodizio["sem_disponibilidade"] = False
+            rodizio = pd.concat([rodizio, faltantes], ignore_index=True)
 
-    # ===============================
+    # =================================================
     # EXIBIÇÃO
-    # ===============================
+    # =================================================
     st.subheader(f"📅 Rodízio – Semana {semana_sel}")
     st.dataframe(rodizio, use_container_width=True)
 
