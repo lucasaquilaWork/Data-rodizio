@@ -209,6 +209,18 @@ def processar_disponibilidade(
     # Metadados
     # -------------------------------
     hist["data_importacao"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    # =====================================================
+    # REMOVE DUPLICIDADES
+    # 1 motorista / 1 data / 1 turno
+    # =====================================================
+    df = (
+        df
+        .drop_duplicates(
+            subset=["driver_id", "data", "turno_ofertado"],
+            keep="first"
+        )
+        .reset_index(drop=True)
+    )
 
     # -------------------------------
     # Ordenação final
