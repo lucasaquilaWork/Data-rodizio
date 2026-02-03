@@ -22,9 +22,10 @@ st.write("Spreadsheet:", st.secrets["spreadsheet_id"])
 # ===============================
 # BASES FIXAS
 # ===============================
+st.write("Spreadsheet:", st.secrets["spreadsheet_id"])
+
 base_motoristas = read_tab(BASE_MOTORISTAS_TAB)
-sh = client.open_by_key(st.secrets["spreadsheet_id"])
-st.write("Planilha aberta:", sh.title)
+base_regiao = read_tab(BASE_REGIAO_TAB)
 
 base_regiao = read_tab(BASE_REGIAO_TAB)
 
