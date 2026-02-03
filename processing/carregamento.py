@@ -133,6 +133,16 @@ def processar_carregamento(
     df["data_importacao"] = datetime.now().strftime(
         "%Y-%m-%d %H:%M:%S"
     )
+    # ======================================================
+    # 🔥 DEDUPLICAÇÃO DEFINITIVA (RAIZ DO PROBLEMA)
+    # 1 LINHA POR TASK_ID (NÃO IMPORTA O RESTO)
+    # ======================================================
+    df = (
+        df
+        .sort_values("data_importacao")
+        .groupby("task_id", as_index=False)
+        .first()
+    )
 
     # ===============================
     # RETORNO FINAL
@@ -151,3 +161,4 @@ def processar_carregamento(
             "data_importacao"
         ]
     ]
+
