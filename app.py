@@ -134,6 +134,29 @@ if arquivo and menu != "Rodízio (visualização)":
 
     st.success("✅ Arquivo processado e salvo com sucesso")
 
+def normalizar_semana(df, ano_ref=None):
+    if df.empty or "semana" not in df.columns:
+        return df
+
+    df = df.copy()
+
+    # Se já estiver no formato 2026-W05, não mexe
+    if df["semana"].astype(str).str.contains("-W").any():
+        return df
+
+    # Caso esteja só número (5, "5", etc)
+    if ano_ref is None:
+        ano_ref = datetime.datetime.now().year
+
+    df["semana"] = (
+        df["semana"]
+        .astype(int)
+        .astype(str)
+        .str.zfill(2)
+        .apply(lambda x: f"{ano_ref}-W{x}")
+    )
+
+    return df
 
 # =====================================================
 # RODÍZIO
