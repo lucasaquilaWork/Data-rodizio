@@ -21,15 +21,14 @@ st.title("📊 Rodízio Semanal")
 
 
 # =====================================================
-# FUNÇÕES DE SEGURANÇA
+# FUNÇÕES AUXILIARES
 # =====================================================
 def ensure_df(df):
-    """Garante DataFrame SEMPRE"""
     if df is None:
         return pd.DataFrame()
-    if not isinstance(df, pd.DataFrame):
-        return pd.DataFrame(df)
-    return df
+    if isinstance(df, pd.DataFrame):
+        return df
+    return pd.DataFrame(df)
 
 
 def ler_arquivo(file):
@@ -52,13 +51,13 @@ def botao_modelo(df_modelo, nome_arquivo, label):
 
 
 # =====================================================
-# BASES FIXAS (BLINDADAS)
+# BASES FIXAS
 # =====================================================
 try:
     base_motoristas = ensure_df(read_tab(BASE_MOTORISTAS_TAB))
     base_regiao = ensure_df(read_tab(BASE_REGIAO_TAB))
 except Exception as e:
-    st.error("Erro ao conectar na planilha Google")
+    st.error("❌ Erro ao conectar na planilha Google")
     st.stop()
 
 
@@ -84,33 +83,23 @@ menu = st.sidebar.selectbox(
 arquivo = None
 
 if menu == "Upload devolucoes":
-
-    st.subheader("📥 Modelo – Devoluções")
-
     modelo = pd.DataFrame({
         "Driver ID": [""],
         "Driver Name": [""],
         "qtd_pacotes": [""],
         "data": [datetime.datetime.now().strftime("%d/%m/%Y")]
     })
-
     botao_modelo(modelo, "modelo_devolucoes.xlsx", "⬇️ Baixar modelo")
-    st.divider()
     arquivo = st.file_uploader("Upload do arquivo", type=["csv", "xlsx"])
 
 elif menu == "Upload cancelamento":
-
-    st.subheader("📥 Modelo – Cancelamento")
-
     modelo = pd.DataFrame({
         "Driver ID": [""],
         "Driver Name": [""],
         "Data": [datetime.datetime.now().strftime("%d/%m/%Y")],
         "Turno": ["AM"]
     })
-
     botao_modelo(modelo, "modelo_cancelamento.xlsx", "⬇️ Baixar modelo")
-    st.divider()
     arquivo = st.file_uploader("Upload do arquivo", type=["csv", "xlsx"])
 
 else:
@@ -118,10 +107,9 @@ else:
 
 
 # =====================================================
-# PROCESSAMENTO UPLOAD
+# PROCESSAMENTO
 # =====================================================
 if arquivo and menu != "Rodízio (visualização)":
-
     df = ler_arquivo(arquivo)
 
     if menu == "Upload disponibilidade":
@@ -165,47 +153,21 @@ if menu == "Rodízio (visualização)":
     semanas = sorted(disp["semana"].dropna().unique())
     semana_sel = st.selectbox("Selecione a semana", semanas)
 
-    # FILTRO SEMANAL
     disp_w = disp[disp["semana"] == semana_sel]
     carg_w = carg[carg["semana"] == semana_sel] if "semana" in carg.columns else carg
     dev_w  = dev[dev["semana"] == semana_sel] if "semana" in dev.columns else dev
     rec_w  = rec[rec["semana"] == semana_sel] if "semana" in rec.columns else rec
-    canc_w = canc.copy()
 
     rodizio = consolidar_rodizio(
         disp_w,
         carg_w,
         dev_w,
-        canc_w,
+        canc,
         rec_w,
         base_motoristas,
         debug=False
     )
 
-    # =================================================
-    # MOTORISTAS SEM DISPONIBILIDADE
-    # =================================================
-    if not base_motoristas.empty:
-        base_ids = base_motoristas["driver_id"].astype(str)
-        rodizio_ids = rodizio["driver_id"].astype(str)
-
-        faltantes = base_motoristas[
-            ~base_ids.isin(rodizio_ids)
-        ][["driver_id", "driver_name", "turno"]].copy()
-
-        if not faltantes.empty:
-            faltantes["disp_total"] = 0
-            faltantes["carg_total"] = 0
-            faltantes["turno_referencia"] = faltantes["turno"]
-            faltantes["origem_turno"] = "BASE_MOTORISTAS"
-            faltantes["sem_disponibilidade"] = True
-
-            rodizio["sem_disponibilidade"] = False
-            rodizio = pd.concat([rodizio, faltantes], ignore_index=True)
-
-    # =================================================
-    # EXIBIÇÃO
-    # =================================================
     st.subheader(f"📅 Rodízio – Semana {semana_sel}")
     st.dataframe(rodizio, use_container_width=True)
 
