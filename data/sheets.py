@@ -28,7 +28,6 @@ def read_tab(tab_name):
         ws = sh.worksheet(tab_name)
         records = ws.get_all_records()
 
-        # ✅ SEMPRE DataFrame
         if not records:
             return pd.DataFrame()
 
@@ -37,3 +36,17 @@ def read_tab(tab_name):
     except Exception as e:
         st.error(f"Erro ao ler aba '{tab_name}': {e}")
         return pd.DataFrame()
+
+
+def append_df(tab_name, df):
+    if df.empty:
+        return
+
+    client = get_client()
+    sh = client.open_by_key(st.secrets["spreadsheet_id"])
+    ws = sh.worksheet(tab_name)
+
+    ws.append_rows(
+        df.astype(str).values.tolist(),
+        value_input_option="USER_ENTERED"
+    )
