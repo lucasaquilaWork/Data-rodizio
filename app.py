@@ -12,20 +12,17 @@ from processing.recusas import processar_recusas
 from metrics.rodizio import consolidar_rodizio
 from config.settings import *
 
-
 # ===============================
 # CONFIG
 # ===============================
 st.set_page_config(layout="wide")
 st.title("📊 Rodízio Semanal")
 
-
 # ===============================
 # BASES FIXAS
 # ===============================
 base_motoristas = read_tab(BASE_MOTORISTAS_TAB)
 base_regiao = read_tab(BASE_REGIAO_TAB)
-
 
 # ===============================
 # MENU
@@ -42,8 +39,6 @@ menu = st.sidebar.selectbox(
     ]
 )
 
-
-
 # ===============================
 # FUNÇÕES AUX
 # ===============================
@@ -51,7 +46,6 @@ def ler_arquivo(file):
     if file.name.endswith(".csv"):
         return pd.read_csv(file)
     return pd.read_excel(file)
-
 
 def botao_modelo(df_modelo, nome_arquivo, label):
     buffer = BytesIO()
@@ -65,9 +59,8 @@ def botao_modelo(df_modelo, nome_arquivo, label):
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
 
-
 # ===============================
-# UPLOAD + MODELOS
+# UPLOAD
 # ===============================
 arquivo = None
 
@@ -82,18 +75,10 @@ if menu == "Upload devolucoes":
         "data": [datetime.datetime.now().strftime("%d/%m/%Y")]
     })
 
-    botao_modelo(
-        modelo,
-        "modelo_devolucoes.xlsx",
-        "⬇️ Baixar modelo de devoluções"
-    )
-
+    botao_modelo(modelo, "modelo_devolucoes.xlsx", "⬇️ Baixar modelo de devoluções")
     st.divider()
 
-    arquivo = st.file_uploader(
-        "Upload do arquivo de devoluções (CSV ou XLSX)",
-        type=["csv", "xlsx"]
-    )
+    arquivo = st.file_uploader("Upload do arquivo", type=["csv", "xlsx"])
 
 elif menu == "Upload cancelamento":
 
@@ -106,25 +91,13 @@ elif menu == "Upload cancelamento":
         "Turno": ["AM"]
     })
 
-    botao_modelo(
-        modelo,
-        "modelo_cancelamento.xlsx",
-        "⬇️ Baixar modelo de cancelamento"
-    )
-
+    botao_modelo(modelo, "modelo_cancelamento.xlsx", "⬇️ Baixar modelo de cancelamento")
     st.divider()
 
-    arquivo = st.file_uploader(
-        "Upload do arquivo de cancelamento (CSV ou XLSX)",
-        type=["csv", "xlsx"]
-    )
+    arquivo = st.file_uploader("Upload do arquivo", type=["csv", "xlsx"])
 
 else:
-    arquivo = st.file_uploader(
-        "Upload de arquivo (CSV ou XLSX)",
-        type=["csv", "xlsx"]
-    )
-
+    arquivo = st.file_uploader("Upload de arquivo", type=["csv", "xlsx"])
 
 # ===============================
 # PROCESSAMENTO
@@ -155,7 +128,6 @@ if arquivo and menu != "Rodízio (visualização)":
 
     st.success("✅ Arquivo processado e salvo com sucesso")
 
-
 # ===============================
 # RODÍZIO / VISUALIZAÇÃO
 # ===============================
@@ -173,30 +145,48 @@ if menu == "Rodízio (visualização)":
 
     semanas = sorted(disp["semana"].dropna().unique())
 
-    semana_sel = st.selectbox(
-        "Selecione a semana",
-        semanas
-    )
+    semana_sel = st.selectbox("Selecione a semana", semanas)
 
+    # 🔥 FILTRO CORRETO POR SEMANA
     disp_w = disp[disp["semana"] == semana_sel]
     carg_w = carg[carg["semana"] == semana_sel] if not carg.empty else carg
-    dev_w = dev[dev["semana"] == semana_sel] if not dev.empty else dev
-    rec_w = rec[rec["semana"] == semana_sel] if not rec.empty else rec
+    dev_w  = dev[dev["semana"] == semana_sel] if not dev.empty else dev
+    rec_w  = rec[rec["semana"] == semana_sel] if not rec.empty else rec
     canc_w = canc.copy()
 
-    if disp_w.empty:
-        st.warning("Nenhuma disponibilidade para essa semana")
-        st.stop()
-
     rodizio = consolidar_rodizio(
-        disp,
-        carg,
-        dev,
-        canc,
-        rec,
-        base_motoristas
+        disp_w,
+        carg_w,
+        dev_w,
+        canc_w,
+        rec_w,
+        base_motoristas,
+        debug=False
     )
 
+    # ===============================
+    # INCLUI MOTORISTAS SEM DISPONIBILIDADE
+    # ===============================
+    base_ids = base_motoristas["driver_id"].astype(str)
+    rodizio_ids = rodizio["driver_id"].astype(str)
+
+    faltantes = base_motoristas[
+        ~base_ids.isin(rodizio_ids)
+    ][["driver_id", "driver_name", "turno"]].copy()
+
+    if not faltantes.empty:
+        faltantes["disp_total"] = 0
+        faltantes["carg_total"] = 0
+        faltantes["turno_referencia"] = faltantes["turno"]
+        faltantes["origem_turno"] = "BASE_MOTORISTAS"
+        faltantes["sem_disponibilidade"] = True
+
+        rodizio["sem_disponibilidade"] = False
+        rodizio = pd.concat([rodizio, faltantes], ignore_index=True)
+
+    # ===============================
+    # EXIBIÇÃO
+    # ===============================
     st.subheader(f"📅 Rodízio – Semana {semana_sel}")
     st.dataframe(rodizio, use_container_width=True)
 
