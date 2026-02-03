@@ -22,6 +22,9 @@ st.title("📊 Rodízio Semanal")
 # BASES FIXAS
 # ===============================
 base_motoristas = read_tab(BASE_MOTORISTAS_TAB)
+sh = client.open_by_key(st.secrets["spreadsheet_id"])
+st.write("Planilha aberta:", sh.title)
+
 base_regiao = read_tab(BASE_REGIAO_TAB)
 
 # ===============================
