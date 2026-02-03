@@ -55,7 +55,7 @@ def processar_disponibilidade(
 ) -> pd.DataFrame:
 
     # -------------------------------
-    # Normalização
+    # Normalização inicial
     # -------------------------------
     df = df_raw.copy()
     df.columns = df.columns.astype(str).str.strip()
@@ -78,17 +78,13 @@ def processar_disponibilidade(
         if col not in df.columns:
             raise ValueError(f"Coluna obrigatória ausente no upload: {col}")
 
-    if "driver_id" not in base_motoristas.columns:
-        raise ValueError("base_motoristas precisa ter a coluna driver_id")
+    for col in ["driver_id", "cep_ofertado", "turno"]:
+        if col not in base_motoristas.columns:
+            raise ValueError(f"base_motoristas precisa ter a coluna {col}")
 
-    if "cep_ofertado" not in base_motoristas.columns:
-        raise ValueError("base_motoristas precisa ter a coluna cep_ofertado")
-
-    if "turno" not in base_motoristas.columns:
-        raise ValueError("base_motoristas precisa ter a coluna turno")
-
-    if "cluster" not in base_regiao.columns or "cep_base" not in base_regiao.columns:
-        raise ValueError("base_regiao precisa ter as colunas cluster e cep_base")
+    for col in ["cluster", "cep_base"]:
+        if col not in base_regiao.columns:
+            raise ValueError(f"base_regiao precisa ter a coluna {col}")
 
     # -------------------------------
     # Identificar colunas de data
@@ -96,11 +92,11 @@ def processar_disponibilidade(
     idx = df.columns.get_loc("No Show Time")
     colunas_data = df.columns[idx + 1:]
 
-    if len(colunas_data) == 0:
+    if not colunas_data.any():
         raise ValueError("Nenhuma coluna de data encontrada após 'No Show Time'")
 
     # -------------------------------
-    # Explodir por data
+    # Explodir por data + turno
     # -------------------------------
     registros = []
 
@@ -119,8 +115,15 @@ def processar_disponibilidade(
             ]
         ].copy()
 
-        temp["turno_ofertado"] = temp[col_data].apply(identificar_turno)
-        temp = temp[temp["turno_ofertado"].notna()]
+        temp["turno_raw"] = temp[col_data].apply(identificar_turno)
+        temp = temp[temp["turno_raw"].notna()]
+
+        # 🔥 AM+SD vira duas linhas
+        temp["turno_ofertado"] = temp["turno_raw"].apply(
+            lambda x: ["AM", "SD"] if x == "AM+SD" else [x]
+        )
+
+        temp = temp.explode("turno_ofertado").drop(columns=["turno_raw", col_data])
 
         temp["data"] = data_ref.strftime("%Y-%m-%d")
         temp["semana"] = data_ref.strftime("%G-W%V")
@@ -133,7 +136,7 @@ def processar_disponibilidade(
     hist = pd.concat(registros, ignore_index=True)
 
     # -------------------------------
-    # Renomear e normalizar
+    # Normalização de colunas
     # -------------------------------
     hist = hist.rename(columns={
         "Driver ID": "driver_id",
@@ -145,7 +148,7 @@ def processar_disponibilidade(
     hist = normalize_columns(hist)
 
     # -------------------------------
-    # Enriquecer com base_motoristas
+    # Merge base_motoristas
     # -------------------------------
     hist = hist.merge(
         base_motoristas[[
@@ -160,7 +163,7 @@ def processar_disponibilidade(
     hist["turno_base"] = hist["turno_base"].fillna("N/D")
 
     # -------------------------------
-    # Enriquecer com base_regiao
+    # Merge base_regiao
     # -------------------------------
     hist = hist.merge(
         base_regiao[["cluster", "cep_base"]],
@@ -168,40 +171,23 @@ def processar_disponibilidade(
         how="left"
     )
 
-
-
-    # ======================================================
-    # CEP BASE (vem da base_motoristas)
-    # ======================================================
-    hist["cep_base"] = hist["cep_ofertado"]
-
-    hist["cep_base"] = hist["cep_base"].fillna(
-        "motorista não encontrado na base de dados"
-    )
-
-    # ======================================================
-    # NORMALIZA CEP MOTORISTA (da disponibilidade)
-    # ======================================================
+    # -------------------------------
+    # CEPs
+    # -------------------------------
     hist["cep_motorista"] = (
-        hist["cluster"]  # ou outra coluna que representa a oferta
-        .astype(str)
-        .str.replace(r"\D", "", regex=True)
-        .str[:2]  # ajuste conforme regra (2 ou 3 dígitos)
-    )
-
-    # ======================================================
-    # NORMALIZA CEP BASE
-    # ======================================================
-    hist["cep_base"] = (
-        hist["cep_base"]
+        hist["cluster"]
         .astype(str)
         .str.replace(r"\D", "", regex=True)
         .str[:2]
     )
 
-    # ======================================================
-    # COMPARAÇÃO FINAL
-    # ======================================================
+    hist["cep_base"] = (
+        hist["cep_ofertado"]
+        .astype(str)
+        .str.replace(r"\D", "", regex=True)
+        .str[:2]
+    )
+
     hist["disponivel"] = hist["cep_motorista"] == hist["cep_base"]
     hist["fora_da_regiao"] = ~hist["disponivel"]
 
@@ -209,12 +195,13 @@ def processar_disponibilidade(
     # Metadados
     # -------------------------------
     hist["data_importacao"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
     # =====================================================
-    # REMOVE DUPLICIDADES
+    # 🚫 REMOVE DUPLICIDADES (BUG FIX DEFINITIVO)
     # 1 motorista / 1 data / 1 turno
     # =====================================================
-    df = (
-        df
+    hist = (
+        hist
         .drop_duplicates(
             subset=["driver_id", "data", "turno_ofertado"],
             keep="first"
@@ -223,7 +210,7 @@ def processar_disponibilidade(
     )
 
     # -------------------------------
-    # Ordenação final
+    # Retorno final
     # -------------------------------
     return hist[
         [
