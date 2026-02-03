@@ -196,18 +196,23 @@ def processar_disponibilidade(
     # -------------------------------
     hist["data_importacao"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
+   # =====================================================
+    # 🚫 REMOVE DUPLICIDADES (SAFE)
     # =====================================================
-    # 🚫 REMOVE DUPLICIDADES (BUG FIX DEFINITIVO)
-    # 1 motorista / 1 data / 1 turno
-    # =====================================================
-    hist = (
-        hist
-        .drop_duplicates(
-            subset=["driver_id", "data", "turno_ofertado"],
-            keep="first"
+    chaves = ["driver_id", "data", "turno_ofertado"]
+    
+    chaves_existentes = [c for c in chaves if c in hist.columns]
+    
+    if len(chaves_existentes) == 3:
+        hist = (
+            hist
+            .drop_duplicates(
+                subset=chaves_existentes,
+                keep="first"
+            )
+            .reset_index(drop=True)
         )
-        .reset_index(drop=True)
-    )
+
 
     # -------------------------------
     # Retorno final
