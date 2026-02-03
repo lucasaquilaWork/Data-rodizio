@@ -159,13 +159,12 @@ if menu == "Rodízio (visualização)":
     rec_w  = rec[rec["semana"] == semana_sel] if "semana" in rec.columns else rec
 
     rodizio = consolidar_rodizio(
-        disp_w,
-        carg_w,
-        dev_w,
+        disp,
+        carg,
+        dev,
         canc,
-        rec_w,
-        base_motoristas,
-        debug=False
+        rec,
+        base_motoristas
     )
 
     st.subheader(f"📅 Rodízio – Semana {semana_sel}")
