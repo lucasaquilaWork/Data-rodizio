@@ -163,11 +163,12 @@ def normalizar_semana(df, ano_ref=None):
 # =====================================================
 if menu == "Rodízio (visualização)":
 
-    disp = ensure_df(read_tab(DISPONIBILIDADE_TAB))
-    carg = ensure_df(read_tab(CARREGAMENTO_TAB))
-    dev  = ensure_df(read_tab(DEVOLUCOES_TAB))
-    canc = ensure_df(read_tab(CANCELAMENTO_TAB))
-    rec  = ensure_df(read_tab(RECUSAS_TAB))
+    disp = normalizar_semana(ensure_df(read_tab(DISPONIBILIDADE_TAB)))
+    carg = normalizar_semana(ensure_df(read_tab(CARREGAMENTO_TAB)))
+    dev  = normalizar_semana(ensure_df(read_tab(DEVOLUCOES_TAB)))
+    canc = normalizar_semana(ensure_df(read_tab(CANCELAMENTO_TAB)))
+    rec  = normalizar_semana(ensure_df(read_tab(RECUSAS_TAB)))
+
 
     if disp.empty or "semana" not in disp.columns:
         st.warning("Nenhuma disponibilidade cadastrada")
@@ -182,13 +183,14 @@ if menu == "Rodízio (visualização)":
     rec_w  = rec[rec["semana"] == semana_sel] if "semana" in rec.columns else rec
 
     rodizio = consolidar_rodizio(
-        disp,
-        carg,
-        dev,
-        canc,
-        rec,
+        disp_w,
+        carg_w,
+        dev_w,
+        canc[canc["semana"] == semana_sel] if "semana" in canc.columns else canc,
+        rec_w,
         base_motoristas
     )
+
 
     st.subheader(f"📅 Rodízio – Semana {semana_sel}")
     st.dataframe(rodizio, use_container_width=True)
