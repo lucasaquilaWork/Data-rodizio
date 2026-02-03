@@ -17,6 +17,7 @@ from config.settings import *
 # ===============================
 st.set_page_config(layout="wide")
 st.title("📊 Rodízio Semanal")
+st.write("Spreadsheet:", st.secrets["spreadsheet_id"])
 
 # ===============================
 # BASES FIXAS
