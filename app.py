@@ -175,6 +175,11 @@ if menu == "Rodízio (visualização)":
         st.stop()
 
     semanas = sorted(disp["semana"].dropna().unique())
+    st.write("DEBUG semanas:")
+    st.write("Disp:", disp["semana"].unique())
+    st.write("Carg:", carg["semana"].unique())
+    st.write("Dev:", dev["semana"].unique())
+
     semana_sel = st.selectbox("Selecione a semana", semanas)
 
     disp_w = disp[disp["semana"] == semana_sel]
