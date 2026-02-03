@@ -140,21 +140,27 @@ def normalizar_semana(df, ano_ref=None):
 
     df = df.copy()
 
-    # Se já estiver no formato 2026-W05, não mexe
-    if df["semana"].astype(str).str.contains("-W").any():
-        return df
-
-    # Caso esteja só número (5, "5", etc)
     if ano_ref is None:
         ano_ref = datetime.datetime.now().year
 
-    df["semana"] = (
-        df["semana"]
-        .astype(int)
-        .astype(str)
-        .str.zfill(2)
-        .apply(lambda x: f"{ano_ref}-W{x}")
-    )
+    def normalizar(valor):
+        if pd.isna(valor):
+            return None
+
+        valor = str(valor).strip()
+
+        # Já está no formato correto
+        if "-W" in valor:
+            return valor
+
+        # Só número (5, "5", "05")
+        try:
+            semana = int(valor)
+            return f"{ano_ref}-W{str(semana).zfill(2)}"
+        except:
+            return None
+
+    df["semana"] = df["semana"].apply(normalizar)
 
     return df
 
