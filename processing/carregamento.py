@@ -21,7 +21,7 @@ def identificar_turno_carregamento(create_time: str) -> str | None:
     """
     Regras:
     - AM: criação entre 00:00 e 04:59
-    - SD: criação entre 08:00 e 10:59
+    - SD: criação entre 06:00 e 12:59
     - Caso contrário: None
     """
     if not isinstance(create_time, str):
@@ -49,7 +49,7 @@ def processar_carregamento(
 ) -> pd.DataFrame:
 
     # -------------------------------
-    # Normalização
+    # Normalização inicial
     # -------------------------------
     df = df_raw.copy()
     df.columns = df.columns.astype(str).str.strip()
@@ -57,7 +57,7 @@ def processar_carregamento(
     base_motoristas = normalize_columns(base_motoristas)
 
     # -------------------------------
-    # Validações
+    # Validações mínimas
     # -------------------------------
     obrigatorias_upload = [
         "Task ID",
@@ -79,12 +79,12 @@ def processar_carregamento(
         raise ValueError("base_motoristas precisa ter a coluna turno")
 
     # -------------------------------
-    # Remover duplicados por Task ID
+    # Remove duplicidade bruta por Task ID
     # -------------------------------
-    df = df.drop_duplicates(subset=["Task ID"])
+    df = df.drop_duplicates(subset=["Task ID"], keep="first")
 
     # -------------------------------
-    # Seleção das colunas relevantes
+    # Seleção de colunas relevantes
     # -------------------------------
     df = df[
         [
@@ -100,15 +100,10 @@ def processar_carregamento(
     # -------------------------------
     # Datas
     # -------------------------------
-    df["data"] = pd.to_datetime(
-        df["Delivery Date"],
-        errors="coerce"
-    ).dt.strftime("%Y-%m-%d")
+    data_parse = pd.to_datetime(df["Delivery Date"], errors="coerce")
 
-    df["semana"] = pd.to_datetime(
-        df["Delivery Date"],
-        errors="coerce"
-    ).dt.strftime("%G-W%V")
+    df["data"] = data_parse.dt.strftime("%Y-%m-%d")
+    df["semana"] = data_parse.dt.strftime("%G-W%V")
 
     # -------------------------------
     # Turno do carregamento
@@ -130,6 +125,21 @@ def processar_carregamento(
     df = normalize_columns(df)
 
     # -------------------------------
+    # Garante colunas mínimas (ANTI BUG)
+    # -------------------------------
+    colunas_minimas = [
+        "task_id",
+        "driver_id",
+        "data",
+        "semana",
+        "turno_carregamento"
+    ]
+
+    for col in colunas_minimas:
+        if col not in df.columns:
+            df[col] = pd.NA
+
+    # -------------------------------
     # Enriquecer com base_motoristas
     # -------------------------------
     df = df.merge(
@@ -146,10 +156,33 @@ def processar_carregamento(
     # Fora do turno
     # -------------------------------
     df["fora_do_turno"] = (
-        (df["turno_carregamento"].notna())
+        df["turno_carregamento"].notna()
         & (df["turno_base"] != "N/D")
         & (df["turno_carregamento"] != df["turno_base"])
     )
+
+    # -------------------------------
+    # REMOVE DUPLICIDADES FINAIS (SAFE)
+    # 1 AT / 1 motorista / 1 turno / 1 data
+    # -------------------------------
+    chaves = [
+        "task_id",
+        "driver_id",
+        "data",
+        "turno_carregamento"
+    ]
+
+    chaves_existentes = [c for c in chaves if c in df.columns]
+
+    if len(chaves_existentes) == len(chaves):
+        df = (
+            df
+            .drop_duplicates(
+                subset=chaves_existentes,
+                keep="first"
+            )
+            .reset_index(drop=True)
+        )
 
     # -------------------------------
     # Metadados
