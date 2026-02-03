@@ -134,33 +134,48 @@ if arquivo and menu != "Rodízio (visualização)":
 
     st.success("✅ Arquivo processado e salvo com sucesso")
 
-def normalizar_semana(df, ano_ref=None):
+def normalizar_semana(df):
     if df.empty or "semana" not in df.columns:
         return df
 
     df = df.copy()
 
-    if ano_ref is None:
-        ano_ref = datetime.datetime.now().year
-
-    def normalizar(valor):
+    def normalizar(valor, data):
         if pd.isna(valor):
             return None
 
         valor = str(valor).strip()
 
-        # Já está no formato correto
+        # Se já estiver no formato 2026-W05
         if "-W" in valor:
             return valor
 
-        # Só número (5, "5", "05")
+        # Tenta pegar o ano da coluna data
+        ano = None
+        if pd.notna(data):
+            try:
+                ano = pd.to_datetime(data, dayfirst=True).year
+            except:
+                pass
+
+        if ano is None:
+            ano = datetime.datetime.now().year
+
         try:
             semana = int(valor)
-            return f"{ano_ref}-W{str(semana).zfill(2)}"
+            return f"{ano}-W{str(semana).zfill(2)}"
         except:
             return None
 
-    df["semana"] = df["semana"].apply(normalizar)
+    if "data" in df.columns:
+        df["semana"] = df.apply(
+            lambda r: normalizar(r["semana"], r["data"]),
+            axis=1
+        )
+    else:
+        df["semana"] = df["semana"].apply(
+            lambda v: normalizar(v, None)
+        )
 
     return df
 
