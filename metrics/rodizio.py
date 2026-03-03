@@ -147,13 +147,15 @@ def consolidar_rodizio(
         .rename(columns={"size": "recusas"})
         if not rec.empty else pd.DataFrame(columns=["driver_id", "recusas"])
     )
-        # ==================================================
+    # ==================================================
     # ÚLTIMO CARREGAMENTO / DIAS SEM CARREGAR
     # ==================================================
     if not carg.empty and "data" in carg.columns:
+        # Converter para datetime.date
         carg["data"] = pd.to_datetime(carg["data"], errors="coerce").dt.date
         hoje = datetime.today().date()
 
+        # Última data de carregamento por motorista
         ultimos = carg.groupby("driver_id", as_index=False)["data"].max()
         ultimos["dias_sem_carregar"] = ultimos["data"].apply(
             lambda d: (hoje - d).days if pd.notna(d) else None
@@ -173,6 +175,7 @@ def consolidar_rodizio(
         .merge(rec_agg, on="driver_id", how="left")
         .fillna(0)
     )
+
 
     # ==================================================
     # DISP NO PRÓPRIO TURNO
