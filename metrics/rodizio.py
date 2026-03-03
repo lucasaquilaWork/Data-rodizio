@@ -147,6 +147,19 @@ def consolidar_rodizio(
         .rename(columns={"size": "recusas"})
         if not rec.empty else pd.DataFrame(columns=["driver_id", "recusas"])
     )
+        # ==================================================
+    # ÚLTIMO CARREGAMENTO / DIAS SEM CARREGAR
+    # ==================================================
+    if not carg.empty and "data" in carg.columns:
+        carg["data"] = pd.to_datetime(carg["data"], errors="coerce").dt.date
+        hoje = datetime.today().date()
+
+        ultimos = carg.groupby("driver_id", as_index=False)["data"].max()
+        ultimos["dias_sem_carregar"] = ultimos["data"].apply(
+            lambda d: (hoje - d).days if pd.notna(d) else None
+        )
+    else:
+        ultimos = pd.DataFrame(columns=["driver_id", "dias_sem_carregar"])
 
     # ==================================================
     # CONSOLIDAÇÃO FINAL
@@ -154,6 +167,7 @@ def consolidar_rodizio(
     df = (
         disp_agg
         .merge(carg_agg, on="driver_id", how="left")
+        .merge(ultimos[["driver_id", "dias_sem_carregar"]], on="driver_id", how="left")
         .merge(dev_agg, on="driver_id", how="left")
         .merge(canc_agg, on="driver_id", how="left")
         .merge(rec_agg, on="driver_id", how="left")
