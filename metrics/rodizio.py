@@ -153,26 +153,22 @@ def consolidar_rodizio(
     # ÚLTIMO CARREGAMENTO / DIAS SEM CARREGAR
     # ==================================================
     if not carg.empty and "data" in carg.columns:
-        # Converter para datetime
-        carg["data"] = pd.to_datetime(carg["data"], errors="coerce")
+        # Primeiro tenta converter como ano-mês-dia
+        carg["data_dt"] = pd.to_datetime(carg["data"], format="%Y-%m-%d", errors="coerce")
+    
+        # Para os que ficaram NaT, tenta ano-dia-mês
+        mask = carg["data_dt"].isna()
+        carg.loc[mask, "data_dt"] = pd.to_datetime(carg.loc[mask, "data"], format="%Y-%d-%m", errors="coerce")
+    
         hoje = datetime.today().date()
-        
+    
         # Última data de carregamento por motorista
-        ultimos = carg.groupby("driver_id", as_index=False)["data"].max()
-        
+        ultimos = carg.groupby("driver_id", as_index=False)["data_dt"].max()
+    
         # Diferença em dias
-        ultimos["dias_sem_carregar"] = ultimos["data"].apply(
+        ultimos["dias_sem_carregar"] = ultimos["data_dt"].apply(
             lambda d: (hoje - d.date()).days if pd.notna(d) else None
         )
-
-        # DEBUG: verificar motoristas com maior dias_sem_carregar
-        st.write("=== DEBUG ultimos ===")
-        st.dataframe(ultimos.sort_values("dias_sem_carregar", ascending=False).head(10))
-        
-        # DEBUG: verificar datas de um motorista específico
-        st.write("Motorista 354120 - EDSON DA SILVA MELO")
-        st.dataframe(carg[carg["driver_id"] == "354120"][["driver_id", "data"]])
-
     else:
         ultimos = pd.DataFrame(columns=["driver_id", "dias_sem_carregar"])
 
