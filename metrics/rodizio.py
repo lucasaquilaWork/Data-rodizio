@@ -151,7 +151,7 @@ def consolidar_rodizio(
     # ==================================================
     # ÚLTIMO CARREGAMENTO / DIAS SEM CARREGAR
     if not carg.empty and "data" in carg.columns:
-    # Converter para datetime
+        # Converter para datetime
         carg["data"] = pd.to_datetime(carg["data"], errors="coerce")
         hoje = datetime.today().date()
         
