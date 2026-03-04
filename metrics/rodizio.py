@@ -150,8 +150,10 @@ def consolidar_rodizio(
     )
     # ==================================================
     # ÚLTIMO CARREGAMENTO / DIAS SEM CARREGAR
+    # ==================================================
     if not carg.empty and "data" in carg.columns:
         # Converter para datetime
+        print(carg[carg["driver_id"] == "354120"][["driver_id","data"]])
         carg["data"] = pd.to_datetime(carg["data"], errors="coerce")
         hoje = datetime.today().date()
         
@@ -162,10 +164,8 @@ def consolidar_rodizio(
         ultimos["dias_sem_carregar"] = ultimos["data"].apply(
             lambda d: (hoje - d.date()).days if pd.notna(d) else None
         )
-     else:
+    else:
         ultimos = pd.DataFrame(columns=["driver_id", "dias_sem_carregar"])
-    
-
 
     # ==================================================
     # CONSOLIDAÇÃO FINAL
