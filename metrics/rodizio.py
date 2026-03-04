@@ -156,13 +156,11 @@ def consolidar_rodizio(
         carg["data"] = pd.to_datetime(carg["data"], errors="coerce")
         hoje = datetime.today().date()
 
-        # Última data de carregamento por motorista
         ultimos = carg.groupby("driver_id", as_index=False)["data"].max()
-
-        # Calcular diferença em dias
         ultimos["dias_sem_carregar"] = ultimos["data"].apply(
             lambda d: (hoje - d.date()).days if pd.notna(d) else None
         )
+
     else:
         ultimos = pd.DataFrame(columns=["driver_id", "dias_sem_carregar"])
 
