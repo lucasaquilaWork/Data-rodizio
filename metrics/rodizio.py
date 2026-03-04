@@ -152,14 +152,11 @@ def consolidar_rodizio(
     # ÚLTIMO CARREGAMENTO / DIAS SEM CARREGAR
     # ==================================================
     if not carg.empty and "data" in carg.columns:
-        # Converter para datetime
-        carg["data"] = pd.to_datetime(carg["data"], errors="coerce")
+        # usar a base bruta de carregamentos
+        carg_hist["data"] = pd.to_datetime(carg_hist["data"], errors="coerce")
         hoje = datetime.today().date()
         
-        # Última data de carregamento por motorista
-        ultimos = carg.groupby("driver_id", as_index=False)["data"].max()
-        
-        # Diferença em dias
+        ultimos = carg_hist.groupby("driver_id", as_index=False)["data"].max()
         ultimos["dias_sem_carregar"] = ultimos["data"].apply(
             lambda d: (hoje - d.date()).days if pd.notna(d) else None
         )
