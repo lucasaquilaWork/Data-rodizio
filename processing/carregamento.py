@@ -141,7 +141,7 @@ def processar_carregamento(
         df
         .sort_values("data_importacao")
         .groupby("task_id", as_index=False)
-        .first()
+        .last()
     )
 
     # ===============================
