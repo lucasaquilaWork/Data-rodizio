@@ -153,7 +153,6 @@ def consolidar_rodizio(
     # ==================================================
     if not carg.empty and "data" in carg.columns:
         # Converter para datetime
-        print(carg[carg["driver_id"] == "354120"][["driver_id","data"]])
         carg["data"] = pd.to_datetime(carg["data"], errors="coerce")
         hoje = datetime.today().date()
         
@@ -164,6 +163,13 @@ def consolidar_rodizio(
         ultimos["dias_sem_carregar"] = ultimos["data"].apply(
             lambda d: (hoje - d.date()).days if pd.notna(d) else None
         )
+        # DEBUG: verificar motoristas com maior dias_sem_carregar
+        print("=== DEBUG ultimos ===")
+        print(ultimos.sort_values("dias_sem_carregar", ascending=False).head(10))
+        
+        # DEBUG: verificar datas de um motorista específico
+        print(carg[carg["driver_id"] == "354120"][["driver_id", "data"]])
+
     else:
         ultimos = pd.DataFrame(columns=["driver_id", "dias_sem_carregar"])
 
