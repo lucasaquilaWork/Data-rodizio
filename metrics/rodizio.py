@@ -1,6 +1,7 @@
 import pandas as pd
 from datetime import datetime
 from utils.normalize import normalize_columns
+import streamlit as st
 
 
 def consolidar_rodizio(
@@ -163,12 +164,14 @@ def consolidar_rodizio(
         ultimos["dias_sem_carregar"] = ultimos["data"].apply(
             lambda d: (hoje - d.date()).days if pd.notna(d) else None
         )
+
         # DEBUG: verificar motoristas com maior dias_sem_carregar
-        print("=== DEBUG ultimos ===")
-        print(ultimos.sort_values("dias_sem_carregar", ascending=False).head(10))
+        st.write("=== DEBUG ultimos ===")
+        st.dataframe(ultimos.sort_values("dias_sem_carregar", ascending=False).head(10))
         
         # DEBUG: verificar datas de um motorista específico
-        print(carg[carg["driver_id"] == "354120"][["driver_id", "data"]])
+        st.write("Motorista 354120 - EDSON DA SILVA MELO")
+        st.dataframe(carg[carg["driver_id"] == "354120"][["driver_id", "data"]])
 
     else:
         ultimos = pd.DataFrame(columns=["driver_id", "dias_sem_carregar"])
