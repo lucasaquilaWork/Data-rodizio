@@ -164,6 +164,7 @@ def consolidar_rodizio(
     else:
         ultimos = pd.DataFrame(columns=["driver_id", "dias_sem_carregar"])
 
+
     # ==================================================
     # CONSOLIDAÇÃO FINAL
     # ==================================================
