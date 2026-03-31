@@ -56,6 +56,7 @@ def processar_carregamento(
 
     for col in obrigatorias:
         if col not in df.columns:
+            st.write("Colunas do DataFrame:", df.columns.tolist())
             raise ValueError(f"Coluna obrigatória ausente: {col}")
 
     # ===============================
