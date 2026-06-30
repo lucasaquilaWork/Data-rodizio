@@ -14,9 +14,10 @@ def normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def identificar_turno_carregamento(create_time: str):
-    if not isinstance(create_time, str):
+def identificar_turno_carregamento(create_time):
+    if pd.isna(create_time):
         return None
+
     try:
         hora = pd.to_datetime(create_time).hour
     except Exception:
@@ -24,8 +25,9 @@ def identificar_turno_carregamento(create_time: str):
 
     if 3 <= hora <= 10:
         return "AM"
-    if 11 <= hora <= 21:
+    elif 11 <= hora <= 21:
         return "SD"
+
     return None
 
 
