@@ -22,9 +22,9 @@ def identificar_turno_carregamento(create_time: str):
     except Exception:
         return None
 
-    if 0 <= hora <= 4:
+    if 3 <= hora <= 10:
         return "AM"
-    if 6 <= hora <= 12:
+    if 11 <= hora <= 21:
         return "SD"
     return None
 
@@ -64,7 +64,7 @@ def processar_carregamento(
     df["delivery_date_norm"] = pd.to_datetime(
         df["Delivery Date"],
         errors="coerce"
-    ).dt.strftime("%Y-%m-%d")
+    ).dt.strftime("%d-%m-%y")
 
     # ===============================
     # DEDUPLICAÇÃO REAL (RAIZ)
