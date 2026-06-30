@@ -63,10 +63,14 @@ def processar_carregamento(
     # ===============================
     # NORMALIZA DATAS ANTES DE DEDUP
     # ===============================
-    df["delivery_date_norm"] = pd.to_datetime(
-        df["Delivery Date"],
-        errors="coerce"
-    ).dt.strftime("%d-%m-%y")
+    df["delivery_date_norm"] = (
+        pd.to_datetime(
+            df["Delivery Date"],
+            dayfirst=True,
+            errors="coerce"
+        )
+        .dt.strftime("%Y-%m-%d")
+    )
 
     # ===============================
     # DEDUPLICAÇÃO REAL (RAIZ)
