@@ -32,8 +32,8 @@ def identificar_turno(valor: str):
     if "not available" in v or "pending" in v:
         return None
 
-    tem_am = "05:45" in v or "09:30" in v
-    tem_sd = "12:30" in v or "15:00" in v
+    tem_am = "06:00" in v or "10:00" in v
+    tem_sd = "12:30" in v or "15:30" in v
 
     if tem_am and tem_sd:
         return "AM+SD"
